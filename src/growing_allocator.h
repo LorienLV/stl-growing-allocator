@@ -20,7 +20,7 @@ public:
      *
      * @param mem_pool A GrowingMemPool.
      */
-    GrowingAllocator(GrowingMemPool *mem_pool) noexcept: mem_pool(mem_pool) {};
+    GrowingAllocator(GrowingMemPool *mem_pool) noexcept : mem_pool(mem_pool){};
 
     /**
      * Copy constructor.
@@ -35,7 +35,12 @@ public:
      * @param other The other allocator.
      */
     GrowingAllocator &operator=(const GrowingAllocator &other) noexcept {
+        if (this == &other) {
+            return *this;
+        }
+
         mem_pool = other.mem_pool;
+        return *this;
     };
 
     /**
@@ -44,7 +49,8 @@ public:
      * @param other The other allocator.
      */
     template <class U>
-    GrowingAllocator(const GrowingAllocator<U> &other) noexcept: mem_pool(other.mem_pool) {};
+    GrowingAllocator(const GrowingAllocator<U> &other) noexcept
+        : mem_pool(other.mem_pool){};
 
     /**
      * Move constructor.
@@ -66,7 +72,8 @@ public:
      * @param other The other allocator.
      */
     template <class U>
-    GrowingAllocator(GrowingAllocator<U> &&other) noexcept : mem_pool(other.mem_pool) {
+    GrowingAllocator(GrowingAllocator<U> &&other) noexcept
+        : mem_pool(std::move(other.mem_pool)) {
         other.mem_pool = nullptr;
     };
 
@@ -77,7 +84,8 @@ public:
      * @return value_type* A pointer to the allocated memory.
      */
     value_type *allocate(std::size_t num) {
-        return static_cast<value_type *>(mem_pool->allocate(num, sizeof(value_type)));
+        return static_cast<value_type *>(mem_pool->allocate(num,
+                                                            sizeof(value_type)));
     }
 
     /**
