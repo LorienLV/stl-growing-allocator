@@ -13,7 +13,8 @@
 template <class T>
 class GrowingAllocator {
 public:
-    typedef T value_type;
+    using value_type = T;
+    using propagate_on_container_move_assignment = std::true_type;
 
     /**
      * Construct an allocator that uses the given memory pool.

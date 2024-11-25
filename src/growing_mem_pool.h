@@ -32,6 +32,10 @@ public:
         }
     };
 
+    // Do not allow copy.
+    GrowingMemPool(const GrowingMemPool &) = delete;
+    GrowingMemPool &operator=(const GrowingMemPool &) = delete;
+
     /**
      * Allocate memory for num_elements elements of size element_bytes.
      * Use previously allocated unused bytes if possible.
