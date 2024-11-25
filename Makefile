@@ -4,7 +4,7 @@ CXX:=g++
 
 # Set flags.
 # CFLAGS=
-CXXFLAGS:=-Wall -O3 -std=c++17
+CXXFLAGS:=-Wall -O3 -std=c++23
 DEPFLAGS:=-MD -MP # Autogenerate dependencies.
 CPPFLAGS:=-DDEBUG=1
 # LDFLAGS:=

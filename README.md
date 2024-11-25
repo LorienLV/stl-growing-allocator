@@ -4,6 +4,8 @@ This repository contains a custom C++ allocator for the STL (Standard Template L
 
 The usage of the `GrowingMemPool` and `GrowingAllocator` provided in this repository is similar to using an STL PMR (Polymorphic Memory Resource) `polymorphic_allocator` and `monotonic_buffer_resource`, as described in [std::pmr::monotonic_buffer_resource](https://en.cppreference.com/w/cpp/memory/monotonic_buffer_resource). However, the key distinction is that GrowingMemPool works with a specified number of elements, while monotonic_buffer_resource operates in bytes, making it more challenging to pre-allocate exactly the required data.
 
+Additionally, this repository contains a custom implementation of a vector that can use the `GrowingAllocator`.
+
 ## Example
 
 An example of how to use the allocator can be found in `test.cpp`
