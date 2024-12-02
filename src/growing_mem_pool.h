@@ -2,6 +2,7 @@
 
 #include <list>
 #include <iostream>
+#include <cstddef>
 
 #define DEBUG 1
 
@@ -13,24 +14,46 @@
 class GrowingMemPool {
 public:
     /**
-     * Construct an empty memory pool. When requested, the pool will
-     * allocated at least min_chunk_elements elements.
+     * Construct a memory pool with one chunk.
      *
-     * @param min_chunk_elements The minimum number of elements that
+     * @param chunk_bytes The minimum number of bytes that
      * the pool will allocate when requested.
      */
-    GrowingMemPool(std::size_t min_chunk_elements) noexcept
-        : min_chunk_elements(min_chunk_elements){};
+    GrowingMemPool(std::size_t chunk_bytes) noexcept
+        : chunk_bytes(chunk_bytes) {
+
+        first_chunk = new Chunk{chunk_bytes,
+                                0,
+                                static_cast<std::byte *>(::operator new(chunk_bytes)),
+                                nullptr};
+        curr_chunk = first_chunk;
+    };
 
     /**
-     * Deallocate all the memory allocated.
+     * Deallocate all the memory.
      *
      */
     ~GrowingMemPool() noexcept {
-        for (auto &chunk : chunks) {
-            ::operator delete(static_cast<void *>(chunk.data));
+        Chunk *chunk = first_chunk;
+        while (chunk != nullptr) {
+            Chunk *next = chunk->next;
+
+            ::operator delete(static_cast<void *>(chunk->data));
+            delete chunk;
+
+            chunk = next;
         }
     };
+
+    /**
+     * Clear the pool without deallocating the memory. The old memory will be used
+     * for new allocations if possible.
+     *
+     */
+    void clear() {
+        curr_chunk = first_chunk;
+        curr_chunk->used_bytes = 0;
+    }
 
     // Do not allow copy.
     GrowingMemPool(const GrowingMemPool &) = delete;
@@ -47,25 +70,40 @@ public:
     void *allocate(std::size_t num_elements, std::size_t element_bytes) {
         const std::size_t new_bytes = num_elements * element_bytes;
 
-        const bool new_chunk = chunks.empty() || chunks.back().total_bytes -
-                                                         chunks.back().used_bytes <
-                                                     new_bytes;
+        if (new_bytes > chunk_bytes) {
+            throw std::runtime_error(
+                "The memory pool does not support allocations larger than the "
+                "minimum chunk size.");
+        }
 
         void *ret = nullptr;
 
-        if (new_chunk) {
-            const std::size_t min_chunk_bytes = min_chunk_elements * element_bytes;
-            const std::size_t chunk_bytes = std::max(min_chunk_bytes, new_bytes);
-            ret = ::operator new(chunk_bytes);
+        // We need a new chunk.
+        if (curr_chunk->total_bytes - curr_chunk->used_bytes < new_bytes) {
+            // Allocate new chunk since there is no more chunks to reuse.
+            if (curr_chunk->next == nullptr) {
+                ret = ::operator new(chunk_bytes);
+                Chunk *new_chunk = new Chunk{chunk_bytes,
+                                             0,
+                                             static_cast<std::byte *>(ret),
+                                             nullptr};
+
+                curr_chunk->next = new_chunk;
+
 #if DEBUG
-            std::cerr << "Allocated " << chunk_bytes << " bytes\n";
+                std::cerr << "Created new chunk with " << chunk_bytes << " bytes\n";
 #endif
-            chunks.push_back({chunk_bytes, new_bytes, static_cast<std::byte *>(ret)});
+            }
+            curr_chunk = curr_chunk->next;
+            curr_chunk->used_bytes = new_bytes;
         }
         else {
-            ret = static_cast<void *>(chunks.back().data + chunks.back().used_bytes);
-            std::cerr << "Using " << new_bytes << " bytes in chunk " << chunks.size() - 1 << "\n";
-            chunks.back().used_bytes += new_bytes;
+            ret = static_cast<void *>(curr_chunk->data + curr_chunk->used_bytes);
+            curr_chunk->used_bytes += new_bytes;
+
+#if DEBUG
+            std::cerr << "Using " << new_bytes << " bytes in chunk\n";
+#endif
         }
 
         return ret;
@@ -76,8 +114,12 @@ private:
         std::size_t total_bytes;
         std::size_t used_bytes;
         std::byte *data;
-    };
-    std::list<Chunk> chunks;
 
-    std::size_t min_chunk_elements;
+        Chunk *next;
+    };
+
+    Chunk *first_chunk;
+    Chunk *curr_chunk;
+
+    const std::size_t chunk_bytes;
 };
