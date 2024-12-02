@@ -82,10 +82,9 @@ public:
         if (curr_chunk->total_bytes - curr_chunk->used_bytes < new_bytes) {
             // Allocate new chunk since there is no more chunks to reuse.
             if (curr_chunk->next == nullptr) {
-                ret = ::operator new(chunk_bytes);
                 Chunk *new_chunk = new Chunk{chunk_bytes,
                                              0,
-                                             static_cast<std::byte *>(ret),
+                                             static_cast<std::byte *>(::operator new(chunk_bytes)),
                                              nullptr};
 
                 curr_chunk->next = new_chunk;
@@ -94,7 +93,14 @@ public:
                 std::cerr << "Created new chunk with " << chunk_bytes << " bytes\n";
 #endif
             }
+            else {
+#if DEBUG
+                std::cerr << "Using " << new_bytes << " bytes in a previously allocated chunk\n";
+#endif
+            }
             curr_chunk = curr_chunk->next;
+
+            ret = static_cast<void *>(curr_chunk->data);
             curr_chunk->used_bytes = new_bytes;
         }
         else {
